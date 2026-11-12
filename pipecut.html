@@ -44,7 +44,7 @@
   <h1>Open pipe: length to cut</h1>
   <form id="f" autocomplete="off">
     <div class="seg" role="radiogroup" aria-label="Input mode">
-      <label id="lbl-notes" class="on"><input type="radio" name="mode" value="notes" checked>Notes</label>
+      <label id="lbl-notes" class="on"><input type="radio" name="mode" value="notes" checked>Pitch</label>
       <label id="lbl-cents"><input type="radio" name="mode" value="cents">Cents</label>
     </div>
 
@@ -70,7 +70,7 @@
   <div id="out" aria-live="polite"></div>
   <details>
     <summary>Notes</summary>
-    <p>Notes mode: scientific pitch, A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>,
+    <p>Pitch mode: scientific pitch, A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>,
     with an optional cents offset (<code>A4+12</code>, <code>Bb3-8</code>). A target without an
     octave resolves to the nearest such note to the current pitch; an exact tie goes upward.</p>
     <p>Cents mode: enter how far to raise the pitch; 100 cents is one semitone. A negative value
