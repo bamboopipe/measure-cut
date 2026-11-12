@@ -28,6 +28,9 @@
                border:1px solid var(--line); border-radius:10px; cursor:pointer; }
   .seg label.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
   .seg input { position:absolute; opacity:0; width:0; height:0; }
+  button { display:block; width:100%; margin-top:16px; min-height:48px; padding:12px; font-size:18px; font-weight:600;
+           color:#fff; background:var(--accent); border:0; border-radius:10px; -webkit-appearance:none; appearance:none;
+           cursor:pointer; }
   #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
          white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
   #out.err { color:var(--err); }
@@ -61,7 +64,8 @@
     </div>
 
     <label for="dia">Mean inner diameter (mm, optional)</label>
-    <input type="text" id="dia" inputmode="decimal" placeholder="20" autocomplete="off">
+    <input type="text" id="dia" inputmode="decimal" placeholder="20" autocomplete="off" enterkeyhint="go">
+    <button type="submit" id="go">Calculate</button>
   </form>
   <div id="out" aria-live="polite"></div>
   <details>
@@ -196,12 +200,14 @@ if (typeof document !== "undefined") {
     document.getElementById("lbl-cents").className = m === "cents" ? "on" : "";
   }
 
-  function update() {
+  function update(force) {
     const m = mode();
     const needed = m === "notes" ? [el.len, el.cur, el.tgt] : [el.len, el.cents];
     if (needed.some(function (e) { return !e.value.trim(); })) {
-      out.textContent = "";
-      out.className = "";
+      out.textContent = force === true
+        ? (m === "notes" ? "enter the pipe length, the current note and the target note" : "enter the pipe length and the cents")
+        : "";
+      out.className = force === true ? "err" : "";
       return;
     }
     try {
@@ -217,7 +223,11 @@ if (typeof document !== "undefined") {
 
   ids.forEach(function (id) { el[id].addEventListener("input", update); });
   radios.forEach(function (r) { r.addEventListener("change", function () { showMode(); update(); }); });
-  document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); update(); });
+  document.getElementById("f").addEventListener("submit", function (e) {
+    e.preventDefault();
+    update(true);
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  });
 }
 </script>
 </body>
