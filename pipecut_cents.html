@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pipe cut (cents)">
+<title>Pipe cut (cents)</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.4 -apple-system, system-ui, sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                  max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  main { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; margin: 0 0 16px; }
+  label { display:block; margin: 12px 0 4px; color:var(--muted); font-size:.9rem; }
+  input[type=text] { width:100%; padding:12px; font-size:18px; color:var(--fg); background:transparent;
+          border:1px solid var(--line); border-radius:10px; -webkit-appearance:none; appearance:none; }
+  input[type=text]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
+         white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
+  #out.err { color:var(--err); }
+  details { margin-top:20px; color:var(--muted); font-size:.9rem; }
+  summary { cursor:pointer; }
+  code { font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Open pipe: length to cut for a pitch change</h1>
+  <form id="f" autocomplete="off">
+    <label for="len">Pipe length (cm)</label>
+    <input type="text" id="len" inputmode="decimal" placeholder="38.1" autocomplete="off">
+    <label for="cents">Cents to raise the pitch (negative lowers)</label>
+    <input type="text" id="cents" placeholder="70" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+  </form>
+  <div id="out" aria-live="polite"></div>
+  <details>
+    <summary>Notes</summary>
+    <p>Pitch is inversely proportional to length, and 1200 cents make one octave (a factor of 2).
+    Raising the pitch by c cents therefore scales the length by <code>2^(-c/1200)</code>, and
+    the cut is <code>L &times; (1 &minus; 2^(-c/1200))</code>. A negative value lowers the pitch,
+    so the pipe would have to be lengthened.</p>
+    <p>This page ignores the bore diameter and the end correction, which typically adds a few
+    tenths of a millimetre. The full page, <code>pipecut.html</code>, includes it.</p>
+  </details>
+</main>
+<script>
+function parseLengthMm(text) {
+  var s = text.trim().replace(",", ".");
+  if (!/^\+?(\d+\.?\d*|\.\d+)$/.test(s) || !(Number(s) > 0)) {
+    throw new Error('bad length "' + text.trim() + '" (expected a positive number of cm)');
+  }
+  return Number(s) * 10;
+}
+
+function parseCents(text) {
+  var s = text.trim().replace(",", ".").replace(/[−–]/g, "-");
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) {
+    throw new Error('bad cents "' + text.trim() + '" (expected a number, e.g. 70 or -20)');
+  }
+  return Number(s);
+}
+
+function compute(lengthText, centsText) {
+  var length = parseLengthMm(lengthText);
+  var cents = parseCents(centsText);
+  var semitones = cents / 100;
+  var newLength = length * Math.pow(2, -semitones / 12);
+  var cut = length - newLength;
+
+  var lines = [(cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents = " +
+               (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones"];
+  if (cut >= 0) {
+    lines.push("cut " + cut.toFixed(1) + " mm  (" + length.toFixed(1) + " mm -> " + newLength.toFixed(1) + " mm)");
+  } else {
+    lines.push("pipe is " + (-cut).toFixed(1) + " mm too short for the target; needs " +
+               newLength.toFixed(1) + " mm, cannot be cut");
+  }
+  return lines.join("\n");
+}
+
+if (typeof document !== "undefined") {
+  var lenEl = document.getElementById("len");
+  var centsEl = document.getElementById("cents");
+  var out = document.getElementById("out");
+
+  var update = function () {
+    if (!lenEl.value.trim() || !centsEl.value.trim()) {
+      out.textContent = "";
+      out.className = "";
+      return;
+    }
+    try {
+      out.textContent = compute(lenEl.value, centsEl.value);
+      out.className = "";
+    } catch (e) {
+      out.textContent = "error: " + e.message;
+      out.className = "err";
+    }
+  };
+
+  lenEl.addEventListener("input", update);
+  centsEl.addEventListener("input", update);
+  document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); update(); });
+}
+</script>
+</body>
+</html>
