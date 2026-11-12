@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pipe cut">
+<title>Pipe cut</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:17px/1.4 -apple-system, system-ui, sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                  max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  main { max-width: 480px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; margin: 0 0 16px; }
+  label { display:block; margin: 12px 0 4px; color:var(--muted); font-size:.9rem; }
+  input[type=text] { width:100%; padding:12px; font-size:18px; color:var(--fg); background:transparent;
+          border:1px solid var(--line); border-radius:10px; }
+  input[type=text]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  .seg { display:flex; gap:8px; }
+  .seg label { flex:1; margin:0; padding:10px; text-align:center; color:var(--fg); font-size:1rem;
+               border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+  .seg label.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .seg input { position:absolute; opacity:0; width:0; height:0; }
+  #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
+         white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
+  #out.err { color:var(--err); }
+  details { margin-top:20px; color:var(--muted); font-size:.9rem; }
+  summary { cursor:pointer; }
+  code { font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Open pipe: length to cut</h1>
+  <form id="f" autocomplete="off">
+    <div class="seg" role="radiogroup" aria-label="Input mode">
+      <label id="lbl-notes" class="on"><input type="radio" name="mode" value="notes" checked>Notes</label>
+      <label id="lbl-cents"><input type="radio" name="mode" value="cents">Cents</label>
+    </div>
+
+    <label for="len">Pipe length (cm)</label>
+    <input type="text" id="len" inputmode="decimal" placeholder="38.1" autocomplete="off">
+
+    <div id="g-notes">
+      <label for="cur">Current note (octave required)</label>
+      <input type="text" id="cur" placeholder="F#4+20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <label for="tgt">Target note (octave optional)</label>
+      <input type="text" id="tgt" placeholder="G" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+    </div>
+
+    <div id="g-cents" hidden>
+      <label for="cents">Cents to raise the pitch (negative lowers)</label>
+      <input type="text" id="cents" placeholder="80" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+    </div>
+
+    <label for="dia">Mean inner diameter (mm, optional)</label>
+    <input type="text" id="dia" inputmode="decimal" placeholder="20" autocomplete="off">
+  </form>
+  <div id="out" aria-live="polite"></div>
+  <details>
+    <summary>Notes</summary>
+    <p>Notes mode: scientific pitch, A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>,
+    with an optional cents offset (<code>A4+12</code>, <code>Bb3-8</code>). A target without an
+    octave resolves to the nearest such note to the current pitch; an exact tie goes upward.</p>
+    <p>Cents mode: enter how far to raise the pitch; 100 cents is one semitone. A negative value
+    lowers the pitch, so the pipe would have to be lengthened.</p>
+    <p>Diameter is the inner bore diameter; for a tapered bore use the mean of the two ends.
+    Without it the end correction is omitted, which over-cuts slightly for wide bores.</p>
+  </details>
+</main>
+<script>
+const NOTE_RE = /^([A-Ga-g])([#b]?)(\d)?([+-]\d+(?:\.\d+)?)?$/;
+const SEMITONE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+function parseNote(text) {
+  const t = text.trim().replace(/♯/g, "#").replace(/♭/g, "b").replace(/[−–]/g, "-");
+  const m = NOTE_RE.exec(t);
+  if (!m) throw new Error('bad note "' + text.trim() + '" (examples: A4, C#5, Bb3, A4+12, G)');
+  const letter = m[1], acc = m[2], octave = m[3], cents = m[4];
+  const pc = SEMITONE[letter.toUpperCase()] + { "#": 1, "b": -1, "": 0 }[acc];
+  const midi = octave === undefined ? null : 12 * (Number(octave) + 1) + pc;
+  return { midi: midi, pc: pc, cents: cents === undefined ? 0 : Number(cents) };
+}
+
+function nearestMidi(pc, ref) {
+  const low = pc + 12 * Math.floor((ref - pc) / 12);
+  const high = low + 12;
+  return high - ref <= ref - low ? high : low;
+}
+
+function noteName(midi) {
+  return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+}
+
+function hz(midi, cents) {
+  return 440 * Math.pow(2, (midi - 69 + cents / 100) / 12);
+}
+
+function parseNumber(text, what) {
+  const s = text.trim().replace(",", ".");
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(s)) throw new Error(what);
+  return Number(s);
+}
+
+function parseLengthMm(text) {
+  const cm = parseNumber(text, "length must be a positive number (cm)");
+  if (!(cm > 0)) throw new Error("length must be a positive number (cm)");
+  return cm * 10;
+}
+
+function parseDiameter(text) {
+  return text.trim() === "" ? 0 : parseNumber(text, "diameter must be a non-negative number (mm)");
+}
+
+function report(length, corr, semitones, header) {
+  const ratio = Math.pow(2, -semitones / 12);
+  const lTgt = (length + corr) * ratio - corr;
+  const cut = length - lTgt;
+
+  // Split on the displayed (1 dp) values so the two parts add up to the total exactly.
+  const total = Number(cut.toFixed(1));
+  const noCorr = Number((length * (1 - ratio)).toFixed(1));
+  const corrPart = Number((total - noCorr).toFixed(1)) + 0;
+
+  const lines = [header];
+  if (lTgt <= 0) {
+    lines.push("target is unreachable: effective length would be non-positive");
+    return lines.join("\n");
+  }
+  if (cut >= 0) {
+    lines.push("cut " + cut.toFixed(1) + " mm  (" + length.toFixed(1) + " mm -> " + lTgt.toFixed(1) + " mm)");
+  } else {
+    lines.push("pipe is " + (-cut).toFixed(1) + " mm too short for the target; needs " +
+               lTgt.toFixed(1) + " mm, cannot be cut");
+  }
+  lines.push("  without end correction: " + Math.abs(noCorr).toFixed(1) + " mm");
+  lines.push("  end correction:         " + Math.abs(corrPart).toFixed(1) + " mm");
+  return lines.join("\n");
+}
+
+function compute(lengthText, curText, tgtText, diameterText) {
+  const length = parseLengthMm(lengthText);
+  const diameter = parseDiameter(diameterText);
+
+  const cur = parseNote(curText);
+  const tgt = parseNote(tgtText);
+  if (cur.midi === null) throw new Error("current note needs an octave, e.g. F#4+20");
+  const inferred = tgt.midi === null;
+  const mt = inferred ? nearestMidi(tgt.pc, cur.midi + cur.cents / 100) : tgt.midi;
+
+  const semitones = (mt - cur.midi) + (tgt.cents - cur.cents) / 100;
+  const label = inferred ? " (" + noteName(mt) + ")" : "";
+  const sign = semitones >= 0 ? "+" : "";
+  const header = hz(cur.midi, cur.cents).toFixed(2) + " Hz -> " + hz(mt, tgt.cents).toFixed(2) + " Hz" +
+                 label + ", " + sign + semitones.toFixed(2) + " semitones";
+  return report(length, 0.61 * diameter, semitones, header);
+}
+
+function computeCents(lengthText, centsText, diameterText) {
+  const length = parseLengthMm(lengthText);
+  const diameter = parseDiameter(diameterText);
+
+  const s = centsText.trim().replace(",", ".").replace(/[−–]/g, "-");
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) throw new Error("cents must be a number, e.g. 80 or -20");
+  const cents = Number(s);
+  const semitones = cents / 100;
+  const header = (cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents = " +
+                 (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones";
+  return report(length, 0.61 * diameter, semitones, header);
+}
+
+if (typeof document !== "undefined") {
+  const ids = ["len", "cur", "tgt", "cents", "dia"];
+  const el = {};
+  ids.forEach(function (id) { el[id] = document.getElementById(id); });
+  const out = document.getElementById("out");
+  const radios = document.querySelectorAll('input[name="mode"]');
+
+  function mode() {
+    return document.querySelector('input[name="mode"]:checked').value;
+  }
+
+  function showMode() {
+    const m = mode();
+    document.getElementById("g-notes").hidden = m !== "notes";
+    document.getElementById("g-cents").hidden = m !== "cents";
+    document.getElementById("lbl-notes").className = m === "notes" ? "on" : "";
+    document.getElementById("lbl-cents").className = m === "cents" ? "on" : "";
+  }
+
+  function update() {
+    const m = mode();
+    const needed = m === "notes" ? [el.len, el.cur, el.tgt] : [el.len, el.cents];
+    if (needed.some(function (e) { return !e.value.trim(); })) {
+      out.textContent = "";
+      out.className = "";
+      return;
+    }
+    try {
+      out.textContent = m === "notes"
+        ? compute(el.len.value, el.cur.value, el.tgt.value, el.dia.value)
+        : computeCents(el.len.value, el.cents.value, el.dia.value);
+      out.className = "";
+    } catch (e) {
+      out.textContent = "error: " + e.message;
+      out.className = "err";
+    }
+  }
+
+  ids.forEach(function (id) { el[id].addEventListener("input", update); });
+  radios.forEach(function (r) { r.addEventListener("change", function () { showMode(); update(); }); });
+  document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); update(); });
+}
+</script>
+</body>
+</html>
