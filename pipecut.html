@@ -49,22 +49,22 @@
     </div>
 
     <label for="len">Pipe length (cm)</label>
-    <input type="text" id="len" inputmode="decimal" placeholder="38.1" autocomplete="off">
+    <input type="text" id="len" inputmode="decimal" placeholder="e.g. 36.9" autocomplete="off">
 
     <div id="g-notes">
-      <label for="cur">Current note (octave required)</label>
-      <input type="text" id="cur" placeholder="F#4+20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <label for="cur">Current pitch (octave required)</label>
+      <input type="text" id="cur" placeholder="e.g. F#4+20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
       <label for="tgt">Target note (octave optional)</label>
-      <input type="text" id="tgt" placeholder="G" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input type="text" id="tgt" placeholder="e.g. G" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
     </div>
 
     <div id="g-cents" hidden>
       <label for="cents">Cents to raise the pitch (negative lowers)</label>
-      <input type="text" id="cents" placeholder="80" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input type="text" id="cents" placeholder="e.g. 20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
     </div>
 
     <label for="dia">Mean inner diameter (mm, optional)</label>
-    <input type="text" id="dia" inputmode="decimal" placeholder="20" autocomplete="off" enterkeyhint="go">
+    <input type="text" id="dia" inputmode="decimal" placeholder="e.g. 24" autocomplete="off" enterkeyhint="go">
     <button type="submit" id="go">Calculate</button>
   </form>
   <div id="out" aria-live="polite"></div>
@@ -156,7 +156,7 @@ function compute(lengthText, curText, tgtText, diameterText) {
 
   const cur = parseNote(curText);
   const tgt = parseNote(tgtText);
-  if (cur.midi === null) throw new Error("current note needs an octave, e.g. F#4+20");
+  if (cur.midi === null) throw new Error("current pitch needs an octave, e.g. F#4+20");
   const inferred = tgt.midi === null;
   const mt = inferred ? nearestMidi(tgt.pc, cur.midi + cur.cents / 100) : tgt.midi;
 
