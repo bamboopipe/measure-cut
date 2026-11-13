@@ -82,8 +82,17 @@
     matching note to the current one; an exact tie goes upward.</p>
     <p>Cents mode: enter how far to raise the pitch; 100 cents is one semitone. A negative value
     lowers the pitch, so the pipe would have to be lengthened.</p>
+    <p>End correction: sound does not stop exactly at an open end. The vibrating air extends
+    slightly beyond it, so the pipe behaves as if it were a little longer than its physical length.
+    Each open end adds about 0.61 &times; the inner radius, so for a pipe open at both ends the
+    effective length is the physical length plus 0.61 &times; the inner diameter. Pitch follows the
+    effective length, so the cut is calculated on it. The "end correction" line shows how much of the
+    cut comes from it, and "without end correction" is the cut you would get by ignoring it. This
+    assumes both ends are open; a blown end (mouthpiece or embouchure) has its own correction, which
+    is not modelled here.</p>
     <p>Diameter is the inner bore diameter; for a tapered bore use the mean of the two ends.
-    Without it the end correction is omitted, which over-cuts slightly for wide bores.</p>
+    Without it the end correction is omitted and the cut comes out slightly too small, more so for
+    wide pipes and larger pitch changes.</p>
     <p>The last line, <code>linear L x 5.6126% x s</code>, is the shortcut: the entered length times
     5.6126% times the pitch change in decimal semitones (cents / 100). It is shown only for
     comparison with the exact cut above, which it slightly under-cuts for fractions of a semitone.
