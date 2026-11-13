@@ -36,6 +36,9 @@
   #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
          white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
   #out.err { color:var(--err); }
+  #out .sub { font-size:12px; }
+  #out .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+  #out .lbl { font-size:12px; }
   details { margin-top:20px; color:var(--muted); font-size:.9rem; }
   summary { cursor:pointer; }
   code { font-family: ui-monospace, Menlo, monospace; }
@@ -75,7 +78,7 @@
     <p>Pitch mode: enter the current and the target pitch as note names in scientific pitch notation,
     A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>, with an optional cents offset
     (<code>A4+12</code>, <code>Bb3-8</code>). A target pitch without an octave resolves to the nearest
-    matching pitch to the current one; an exact tie goes upward.</p>
+    matching note to the current one; an exact tie goes upward.</p>
     <p>Cents mode: enter how far to raise the pitch; 100 cents is one semitone. A negative value
     lowers the pitch, so the pipe would have to be lengthened.</p>
     <p>Diameter is the inner bore diameter; for a tapered bore use the mean of the two ends.
@@ -132,10 +135,10 @@ function report(length, corr, semitones, header) {
   const lTgt = (length + corr) * ratio - corr;
   const cut = length - lTgt;
 
-  // Split on the displayed (1 dp) values so the two parts add up to the total exactly.
-  const total = Number(cut.toFixed(1));
-  const noCorr = Number((length * (1 - ratio)).toFixed(1));
-  const corrPart = Number((total - noCorr).toFixed(1)) + 0;
+  // Split on the displayed (2 dp) values so the two parts add up to the total exactly.
+  const total = Number(cut.toFixed(2));
+  const noCorr = Number((length * (1 - ratio)).toFixed(2));
+  const corrPart = Number((total - noCorr).toFixed(2)) + 0;
 
   const lines = [header];
   if (lTgt <= 0) {
@@ -143,13 +146,13 @@ function report(length, corr, semitones, header) {
     return lines.join("\n");
   }
   if (cut >= 0) {
-    lines.push("cut " + cut.toFixed(1) + " mm  (" + length.toFixed(1) + " mm -> " + lTgt.toFixed(1) + " mm)");
+    lines.push("cut " + cut.toFixed(2) + " mm  (" + length.toFixed(2) + " mm -> " + lTgt.toFixed(2) + " mm)");
   } else {
-    lines.push("pipe is " + (-cut).toFixed(1) + " mm too short for the target; needs " +
-               lTgt.toFixed(1) + " mm, cannot be cut");
+    lines.push("pipe is " + (-cut).toFixed(2) + " mm too short for the target; needs " +
+               lTgt.toFixed(2) + " mm, cannot be cut");
   }
-  lines.push("  without end correction: " + Math.abs(noCorr).toFixed(1) + " mm");
-  lines.push("  end correction:         " + Math.abs(corrPart).toFixed(1) + " mm");
+  lines.push("  without end correction: " + Math.abs(noCorr).toFixed(2) + " mm");
+  lines.push("  end correction:         " + Math.abs(corrPart).toFixed(2) + " mm");
   return lines.join("\n");
 }
 
@@ -203,6 +206,34 @@ if (typeof document !== "undefined") {
     document.getElementById("lbl-cents").className = m === "cents" ? "on" : "";
   }
 
+  function render(box, text) {
+    box.textContent = "";
+    text.split("\n").forEach(function (line) {
+      var div = document.createElement("div");
+      var m = /^(cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
+      var r = /^\s{2}([^:]+:)\s+(.+)$/.exec(line);
+      if (m) {
+        div.appendChild(document.createTextNode(m[1] + " "));
+        var sub = document.createElement("span");
+        sub.className = "sub";
+        sub.textContent = m[2];
+        div.appendChild(sub);
+      } else if (r) {
+        div.className = "row";
+        var lbl = document.createElement("span");
+        lbl.className = "lbl";
+        lbl.textContent = r[1];
+        var val = document.createElement("span");
+        val.textContent = r[2];
+        div.appendChild(lbl);
+        div.appendChild(val);
+      } else {
+        div.textContent = line;
+      }
+      box.appendChild(div);
+    });
+  }
+
   function update(force) {
     const m = mode();
     const needed = m === "notes" ? [el.len, el.cur, el.tgt] : [el.len, el.cents];
@@ -214,9 +245,9 @@ if (typeof document !== "undefined") {
       return;
     }
     try {
-      out.textContent = m === "notes"
+      render(out, m === "notes"
         ? compute(el.len.value, el.cur.value, el.tgt.value, el.dia.value)
-        : computeCents(el.len.value, el.cents.value, el.dia.value);
+        : computeCents(el.len.value, el.cents.value, el.dia.value));
       out.className = "";
     } catch (e) {
       out.textContent = "error: " + e.message;

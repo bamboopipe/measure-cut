@@ -31,6 +31,7 @@
   #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
          white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
   #out.err { color:var(--err); }
+  #out .sub { font-size:12px; }
   details { margin-top:20px; color:var(--muted); font-size:.9rem; }
   summary { cursor:pointer; }
   code { font-family: ui-monospace, Menlo, monospace; }
@@ -84,10 +85,10 @@ function compute(lengthText, centsText) {
   var lines = [(cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents = " +
                (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones"];
   if (cut >= 0) {
-    lines.push("cut " + cut.toFixed(1) + " mm  (" + length.toFixed(1) + " mm -> " + newLength.toFixed(1) + " mm)");
+    lines.push("cut " + cut.toFixed(2) + " mm  (" + length.toFixed(2) + " mm -> " + newLength.toFixed(2) + " mm)");
   } else {
-    lines.push("pipe is " + (-cut).toFixed(1) + " mm too short for the target; needs " +
-               newLength.toFixed(1) + " mm, cannot be cut");
+    lines.push("pipe is " + (-cut).toFixed(2) + " mm too short for the target; needs " +
+               newLength.toFixed(2) + " mm, cannot be cut");
   }
   return lines.join("\n");
 }
@@ -97,6 +98,24 @@ if (typeof document !== "undefined") {
   var centsEl = document.getElementById("cents");
   var out = document.getElementById("out");
 
+  var render = function (box, text) {
+    box.textContent = "";
+    text.split("\n").forEach(function (line) {
+      var div = document.createElement("div");
+      var m = /^(cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
+      if (m) {
+        div.appendChild(document.createTextNode(m[1] + " "));
+        var sub = document.createElement("span");
+        sub.className = "sub";
+        sub.textContent = m[2];
+        div.appendChild(sub);
+      } else {
+        div.textContent = line;
+      }
+      box.appendChild(div);
+    });
+  };
+
   var update = function (force) {
     if (!lenEl.value.trim() || !centsEl.value.trim()) {
       out.textContent = force === true ? "enter the pipe length and the cents" : "";
@@ -104,7 +123,7 @@ if (typeof document !== "undefined") {
       return;
     }
     try {
-      out.textContent = compute(lenEl.value, centsEl.value);
+      render(out, compute(lenEl.value, centsEl.value));
       out.className = "";
     } catch (e) {
       out.textContent = "error: " + e.message;
