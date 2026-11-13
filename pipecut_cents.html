@@ -31,6 +31,7 @@
   #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
          white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
   #out.err { color:var(--err); }
+  #out .cut { text-decoration:underline; }
   #out .sub { font-size:12px; }
   details { margin-top:20px; color:var(--muted); font-size:.9rem; }
   summary { cursor:pointer; }
@@ -82,10 +83,10 @@ function compute(lengthText, centsText) {
   var newLength = length * Math.pow(2, -semitones / 12);
   var cut = length - newLength;
 
-  var lines = [(cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents = " +
-               (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones"];
+  var lines = [(cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents (" +
+               (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones)"];
   if (cut >= 0) {
-    lines.push("cut " + cut.toFixed(2) + " mm  (" + length.toFixed(2) + " mm -> " + newLength.toFixed(2) + " mm)");
+    lines.push("Cut " + cut.toFixed(2) + " mm  (" + (length / 10).toFixed(2) + " cm -> " + (newLength / 10).toFixed(2) + " cm)");
   } else {
     lines.push("pipe is " + (-cut).toFixed(2) + " mm too short for the target; needs " +
                newLength.toFixed(2) + " mm, cannot be cut");
@@ -102,9 +103,20 @@ if (typeof document !== "undefined") {
     box.textContent = "";
     text.split("\n").forEach(function (line) {
       var div = document.createElement("div");
-      var m = /^(cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
-      if (m) {
-        div.appendChild(document.createTextNode(m[1] + " "));
+      var h = /^([+-][\d.]+ cents) (\(.*\))$/.exec(line);
+      var m = /^(Cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
+      if (h) {
+        div.appendChild(document.createTextNode(h[1] + " "));
+        var hsub = document.createElement("span");
+        hsub.className = "sub";
+        hsub.textContent = h[2];
+        div.appendChild(hsub);
+      } else if (m) {
+        var cutText = document.createElement("span");
+        cutText.className = "cut";
+        cutText.textContent = m[1];
+        div.appendChild(cutText);
+        div.appendChild(document.createTextNode(" "));
         var sub = document.createElement("span");
         sub.className = "sub";
         sub.textContent = m[2];

@@ -36,6 +36,7 @@
   #out { margin-top:20px; padding:14px; border:1px solid var(--line); border-radius:10px;
          white-space:pre-wrap; font:16px/1.5 ui-monospace, Menlo, monospace; min-height:3.2em; }
   #out.err { color:var(--err); }
+  #out .cut { text-decoration:underline; }
   #out .sub { font-size:12px; }
   #out .row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
   #out .lbl { font-size:12px; }
@@ -150,7 +151,7 @@ function report(length, corr, semitones, header) {
     return lines.join("\n");
   }
   if (cut >= 0) {
-    lines.push("cut " + cut.toFixed(2) + " mm  (" + length.toFixed(2) + " mm -> " + lTgt.toFixed(2) + " mm)");
+    lines.push("Cut " + cut.toFixed(2) + " mm  (" + (length / 10).toFixed(2) + " cm -> " + (lTgt / 10).toFixed(2) + " cm)");
   } else {
     lines.push("pipe is " + (-cut).toFixed(2) + " mm too short for the target; needs " +
                lTgt.toFixed(2) + " mm, cannot be cut");
@@ -188,8 +189,8 @@ function computeCents(lengthText, centsText, diameterText) {
   if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) throw new Error("cents must be a number, e.g. 80 or -20");
   const cents = Number(s);
   const semitones = cents / 100;
-  const header = (cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents = " +
-                 (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones";
+  const header = (cents >= 0 ? "+" : "") + cents.toFixed(2) + " cents (" +
+                 (semitones >= 0 ? "+" : "") + semitones.toFixed(3) + " semitones)";
   return report(length, 0.61 * diameter, semitones, header);
 }
 
@@ -216,10 +217,21 @@ if (typeof document !== "undefined") {
     box.textContent = "";
     text.split("\n").forEach(function (line) {
       var div = document.createElement("div");
-      var m = /^(cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
+      var h = /^([+-][\d.]+ cents) (\(.*\))$/.exec(line);
+      var m = /^(Cut [\d.]+ mm)\s+(\(.*\))$/.exec(line);
       var r = /^\s{2}([^:]+:)\s+(.+)$/.exec(line);
-      if (m) {
-        div.appendChild(document.createTextNode(m[1] + " "));
+      if (h) {
+        div.appendChild(document.createTextNode(h[1] + " "));
+        var hsub = document.createElement("span");
+        hsub.className = "sub";
+        hsub.textContent = h[2];
+        div.appendChild(hsub);
+      } else if (m) {
+        var cutText = document.createElement("span");
+        cutText.className = "cut";
+        cutText.textContent = m[1];
+        div.appendChild(cutText);
+        div.appendChild(document.createTextNode(" "));
         var sub = document.createElement("span");
         sub.className = "sub";
         sub.textContent = m[2];
