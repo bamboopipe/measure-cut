@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-title" content="Pipe cut">
 <title>Pipe cut</title>
 <style>
-  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; }
+  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; --ph:#9a9a9a; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; }
+    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; --ph:#707070; }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg);
@@ -23,6 +23,8 @@
   input[type=text] { width:100%; padding:12px; font-size:18px; color:var(--fg); background:transparent;
           border:1px solid var(--line); border-radius:10px; }
   input[type=text]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  input[type=text]::placeholder { color:var(--ph); font-size:14px; font-style:italic; opacity:1; }
+  input[type=text]::-webkit-input-placeholder { color:var(--ph); font-size:14px; font-style:italic; opacity:1; }
   .seg { display:flex; gap:8px; }
   .seg label { flex:1; margin:0; padding:10px; text-align:center; color:var(--fg); font-size:1rem;
                border:1px solid var(--line); border-radius:10px; cursor:pointer; }
@@ -44,35 +46,36 @@
   <h1>Open pipe: length to cut</h1>
   <form id="f" autocomplete="off">
     <div class="seg" role="radiogroup" aria-label="Input mode">
-      <label id="lbl-notes" class="on"><input type="radio" name="mode" value="notes" checked>Pitch</label>
-      <label id="lbl-cents"><input type="radio" name="mode" value="cents">Cents</label>
+      <label id="lbl-notes"><input type="radio" name="mode" value="notes">Pitch</label>
+      <label id="lbl-cents" class="on"><input type="radio" name="mode" value="cents" checked>Cents</label>
     </div>
 
     <label for="len">Pipe length (cm)</label>
-    <input type="text" id="len" inputmode="decimal" placeholder="36.9" autocomplete="off">
+    <input type="text" id="len" inputmode="decimal" placeholder="38.1" autocomplete="off">
 
-    <div id="g-notes">
+    <div id="g-notes" hidden>
       <label for="cur">Current pitch (octave required)</label>
       <input type="text" id="cur" placeholder="F#4+20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
-      <label for="tgt">Target note (octave optional)</label>
+      <label for="tgt">Target pitch (octave optional)</label>
       <input type="text" id="tgt" placeholder="G" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
     </div>
 
-    <div id="g-cents" hidden>
+    <div id="g-cents">
       <label for="cents">Cents to raise the pitch (negative lowers)</label>
-      <input type="text" id="cents" placeholder="20" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
+      <input type="text" id="cents" placeholder="80" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off">
     </div>
 
     <label for="dia">Mean inner diameter (mm, optional)</label>
-    <input type="text" id="dia" inputmode="decimal" placeholder="24" autocomplete="off" enterkeyhint="go">
+    <input type="text" id="dia" inputmode="decimal" placeholder="20" autocomplete="off" enterkeyhint="go">
     <button type="submit" id="go">Calculate</button>
   </form>
   <div id="out" aria-live="polite"></div>
   <details>
     <summary>Notes</summary>
-    <p>Pitch mode: scientific pitch, A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>,
-    with an optional cents offset (<code>A4+12</code>, <code>Bb3-8</code>). A target without an
-    octave resolves to the nearest such note to the current pitch; an exact tie goes upward.</p>
+    <p>Pitch mode: enter the current and the target pitch as note names in scientific pitch notation,
+    A4 = 440 Hz: <code>A4</code>, <code>C#5</code>, <code>Bb3</code>, with an optional cents offset
+    (<code>A4+12</code>, <code>Bb3-8</code>). A target pitch without an octave resolves to the nearest
+    matching pitch to the current one; an exact tie goes upward.</p>
     <p>Cents mode: enter how far to raise the pitch; 100 cents is one semitone. A negative value
     lowers the pitch, so the pipe would have to be lengthened.</p>
     <p>Diameter is the inner bore diameter; for a tapered bore use the mean of the two ends.
@@ -87,7 +90,7 @@ const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 function parseNote(text) {
   const t = text.trim().replace(/♯/g, "#").replace(/♭/g, "b").replace(/[−–]/g, "-");
   const m = NOTE_RE.exec(t);
-  if (!m) throw new Error('bad note "' + text.trim() + '" (examples: A4, C#5, Bb3, A4+12, G)');
+  if (!m) throw new Error('bad pitch "' + text.trim() + '" (examples: A4, C#5, Bb3, A4+12, G)');
   const letter = m[1], acc = m[2], octave = m[3], cents = m[4];
   const pc = SEMITONE[letter.toUpperCase()] + { "#": 1, "b": -1, "": 0 }[acc];
   const midi = octave === undefined ? null : 12 * (Number(octave) + 1) + pc;
@@ -205,7 +208,7 @@ if (typeof document !== "undefined") {
     const needed = m === "notes" ? [el.len, el.cur, el.tgt] : [el.len, el.cents];
     if (needed.some(function (e) { return !e.value.trim(); })) {
       out.textContent = force === true
-        ? (m === "notes" ? "enter the pipe length, the current note and the target note" : "enter the pipe length and the cents")
+        ? (m === "notes" ? "enter the pipe length, the current pitch and the target pitch" : "enter the pipe length and the cents")
         : "";
       out.className = force === true ? "err" : "";
       return;
@@ -223,6 +226,7 @@ if (typeof document !== "undefined") {
 
   ids.forEach(function (id) { el[id].addEventListener("input", update); });
   radios.forEach(function (r) { r.addEventListener("change", function () { showMode(); update(); }); });
+  showMode();
   document.getElementById("f").addEventListener("submit", function (e) {
     e.preventDefault();
     update(true);

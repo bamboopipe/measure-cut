@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-title" content="Pipe cut (cents)">
 <title>Pipe cut (cents)</title>
 <style>
-  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; }
+  :root { --bg:#fff; --fg:#1b1b1b; --muted:#666; --line:#c8c8c8; --accent:#0a5fd8; --err:#b3261e; --ph:#9a9a9a; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; }
+    :root { --bg:#111; --fg:#eee; --muted:#9a9a9a; --line:#3a3a3a; --accent:#6aa8ff; --err:#ff8a80; --ph:#707070; }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg);
@@ -23,6 +23,8 @@
   input[type=text] { width:100%; padding:12px; font-size:18px; color:var(--fg); background:transparent;
           border:1px solid var(--line); border-radius:10px; -webkit-appearance:none; appearance:none; }
   input[type=text]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  input[type=text]::placeholder { color:var(--ph); font-size:14px; font-style:italic; opacity:1; }
+  input[type=text]::-webkit-input-placeholder { color:var(--ph); font-size:14px; font-style:italic; opacity:1; }
   button { display:block; width:100%; margin-top:16px; min-height:48px; padding:12px; font-size:18px; font-weight:600;
            color:#fff; background:var(--accent); border:0; border-radius:10px; -webkit-appearance:none; appearance:none;
            cursor:pointer; }
